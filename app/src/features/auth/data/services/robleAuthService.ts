@@ -65,7 +65,7 @@ export class RobleAuthService {
   async logout(): Promise<boolean> {
     try {
       return await this.http.logout();
-    } catch (error) {
+    } catch {
       await this.http.clearTokens();
       return true;
     }
@@ -89,7 +89,7 @@ export class RobleAuthService {
         };
         return mapToUser(resolved);
       }
-    } catch (error) {
+    } catch {
       // Silent catch mirrors Flutter fallback behaviour
     }
     return null;

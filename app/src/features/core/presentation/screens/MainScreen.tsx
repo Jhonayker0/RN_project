@@ -1,6 +1,7 @@
-import { useCallback } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { StyleSheet, Text, View, Pressable } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { HomeScreen } from "./HomeScreen";
 import { HomeCourse } from "../controllers/useHomeController";
 
@@ -16,6 +17,7 @@ export function MainScreen({
   currentUserId,
 }: MainScreenProps) {
   const router = useRouter();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleCreateCourse = useCallback(() => {
     router.push("/courses/create" as any);
@@ -36,10 +38,23 @@ export function MainScreen({
     [router]
   );
 
+  const handleRefresh = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.appBar}>
         <Text style={styles.title}>Explorar</Text>
+        <Pressable
+          onPress={handleRefresh}
+          style={({ pressed }) => [
+            styles.refreshButton,
+            pressed && styles.refreshButtonPressed,
+          ]}
+        >
+          <Ionicons name="refresh" size={24} color="#2563eb" />
+        </Pressable>
       </View>
       <HomeScreen
         onLogout={onLogout}
@@ -48,6 +63,7 @@ export function MainScreen({
         onSelectCourse={handleSelectCourse}
         currentUserName={currentUserName}
         currentUserId={currentUserId}
+        refreshTrigger={refreshTrigger}
       />
     </View>
   );
@@ -73,5 +89,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: "#111827",
+  },
+  refreshButton: {
+    padding: 8,
+  },
+  refreshButtonPressed: {
+    opacity: 0.5,
   },
 });

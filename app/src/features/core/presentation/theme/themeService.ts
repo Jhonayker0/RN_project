@@ -4,7 +4,7 @@ import { Appearance } from "react-native";
 const THEME_KEY = "isDarkMode";
 
 export class ThemeService {
-  private subscribers: Array<(isDark: boolean) => void> = [];
+  private subscribers: ((isDark: boolean) => void)[] = [];
 
   async isDark(): Promise<boolean> {
     const stored = await AsyncStorage.getItem(THEME_KEY);

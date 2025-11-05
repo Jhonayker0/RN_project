@@ -24,6 +24,7 @@ interface HomeScreenProps {
   onJoinCourse?: () => void;
   onSelectCourse?: (course: HomeCourse) => void;
   onLogout?: () => void;
+  refreshTrigger?: number;
 }
 
 export function HomeScreen({
@@ -33,6 +34,7 @@ export function HomeScreen({
   onJoinCourse,
   onSelectCourse,
   onLogout,
+  refreshTrigger,
 }: HomeScreenProps) {
   const [filterVisible, setFilterVisible] = useState(false);
   const [sortVisible, setSortVisible] = useState(false);
@@ -48,6 +50,15 @@ export function HomeScreen({
     useCallback(() => {
       void reloadCourses();
     }, [reloadCourses])
+  );
+
+  // Refresh when refreshTrigger changes
+  useFocusEffect(
+    useCallback(() => {
+      if (refreshTrigger && refreshTrigger > 0) {
+        void reloadCourses();
+      }
+    }, [refreshTrigger, reloadCourses])
   );
 
   return (

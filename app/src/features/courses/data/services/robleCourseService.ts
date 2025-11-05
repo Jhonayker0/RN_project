@@ -168,8 +168,22 @@ export class RobleCourseService {
   }
 
   async deleteCourse(courseId: string): Promise<void> {
-    await this.enrollments.removeEnrollmentsByCourse(courseId);
-    await this.database.delete(COURSES_TABLE, courseId);
+    try {
+      console.log('[RobleCourseService] Eliminando curso:', courseId);
+      
+      // First remove all enrollments
+      console.log('[RobleCourseService] Eliminando inscripciones...');
+      await this.enrollments.removeEnrollmentsByCourse(courseId);
+      
+      // Then delete the course
+      console.log('[RobleCourseService] Eliminando curso de la base de datos...');
+      await this.database.delete(COURSES_TABLE, courseId);
+      
+      console.log('[RobleCourseService] Curso eliminado exitosamente');
+    } catch (error) {
+      console.error('[RobleCourseService] Error eliminando curso:', error);
+      throw error;
+    }
   }
 
   private mapRecordsToCourses(

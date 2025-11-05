@@ -124,9 +124,35 @@ export class RobleCategoryService {
   async getCategoryById(categoryId: string): Promise<CategoryRecord | null> {
     try {
       const categories = await this.database.read("categories");
-      return (
-        categories.find((category) => category["_id"] === categoryId) ?? null
+      const category = categories.find((cat) => cat["_id"] === categoryId);
+      
+      if (!category) return null;
+
+      // Enriquecer con estadísticas de grupos y actividades
+      const clone: CategoryRecord = { ...category };
+
+      // Contar grupos
+      const groups = await this.database.read("groups");
+      const categoryGroups = groups.filter(
+        (group) => group["category_id"] === categoryId
       );
+      clone["group_count"] = categoryGroups.length;
+
+      // Contar actividades
+      const activities = await this.database.read("activities");
+      const categoryActivities = activities.filter(
+        (activity) => activity["category_id"] === categoryId
+      );
+      clone["activity_count"] = categoryActivities.length;
+
+      console.log("[robleCategoryService] Category enriched:", {
+        id: categoryId,
+        name: clone["name"],
+        group_count: clone["group_count"],
+        activity_count: clone["activity_count"],
+      });
+
+      return clone;
     } catch (error) {
       console.warn("Error obteniendo categoría por id", error);
       return null;
@@ -219,6 +245,112 @@ export class RobleCategoryService {
     }
   }
 
+  async createCategory(options: {
+    courseId: string;
+    name: string;
+    type?: string;
+    capacity?: number;
+    description?: string;
+  }): Promise<CategoryRecord | null> {
+    const { courseId, name, type, capacity, description } = options;
+    try {
+      console.log('[RobleCategoryService] Creando categoría:', { courseId, name, type, capacity, description });
+      
+      const record: Record<string, any> = {
+        course_id: courseId,
+        name,
+      };
+      
+      if (type !== undefined) record.type = type;
+      if (capacity !== undefined) record.capacity = capacity;
+      if (description !== undefined && description) record.description = description;
+      
+      console.log('[RobleCategoryService] Registro a insertar:', record);
+      
+      await this.database.insert("categories", [record]);
+
+      console.log('[RobleCategoryService] Categoría insertada, leyendo para confirmar...');
+      
+      const categories = await this.database.read("categories");
+      const created = categories
+        .filter(
+          (category) =>
+            category["course_id"] === courseId && category["name"] === name
+        )
+        .pop();
+
+      console.log('[RobleCategoryService] Categoría creada:', created);
+      
+      // Crear grupos automáticamente
+      if (created) {
+        await this.createGroupsAutomatically(created, courseId);
+      }
+      
+      return created ?? null;
+    } catch (error) {
+      console.error("[RobleCategoryService] Error creando categoría:", error);
+      throw error;
+    }
+  }
+
+  async updateCategory(options: {
+    categoryId: string;
+    name?: string;
+    type?: string;
+    capacity?: number;
+    description?: string;
+  }): Promise<boolean> {
+    const { categoryId, name, type, capacity, description } = options;
+    try {
+      console.log('[RobleCategoryService] Actualizando categoría:', { categoryId, name, type, capacity, description });
+      
+      const updates: Record<string, any> = {};
+      if (name !== undefined) updates["name"] = name;
+      if (type !== undefined) updates["type"] = type;
+      if (capacity !== undefined) updates["capacity"] = capacity;
+      if (description !== undefined) updates["description"] = description;
+      
+      console.log('[RobleCategoryService] Updates a aplicar:', updates);
+      
+      await this.database.update("categories", categoryId, updates);
+      
+      console.log('[RobleCategoryService] Categoría actualizada exitosamente');
+      
+      return true;
+    } catch (error) {
+      console.error("[RobleCategoryService] Error actualizando categoría:", error);
+      throw error;
+    }
+  }
+
+  async deleteCategory(categoryId: string): Promise<boolean> {
+    try {
+      console.log('[RobleCategoryService] Eliminando categoría:', categoryId);
+      
+      // First delete all groups in this category
+      const groups = await this.database.read("groups");
+      const categoryGroups = groups.filter(
+        (group) => group["category_id"] === categoryId
+      );
+      
+      console.log('[RobleCategoryService] Grupos a eliminar:', categoryGroups.length);
+      
+      for (const group of categoryGroups) {
+        await this.deleteGroup(group["_id"]);
+      }
+
+      // Then delete the category itself
+      await this.database.delete("categories", categoryId);
+      
+      console.log('[RobleCategoryService] Categoría eliminada exitosamente');
+      
+      return true;
+    } catch (error) {
+      console.error("[RobleCategoryService] Error eliminando categoría:", error);
+      throw error;
+    }
+  }
+
   async createGroup(options: {
     categoryId: string;
     name: string;
@@ -275,15 +407,22 @@ export class RobleCategoryService {
 
   async deleteGroup(groupId: string): Promise<boolean> {
     try {
+      console.log('[RobleCategoryService] Eliminando grupo:', groupId);
+      
       const members = await this.getGroupMembers(groupId);
+      console.log('[RobleCategoryService] Miembros del grupo a eliminar:', members.length);
+      
       for (const member of members) {
         await this.database.delete("group_members", member["_id"]);
       }
+      
       await this.database.delete("groups", groupId);
+      console.log('[RobleCategoryService] Grupo eliminado exitosamente');
+      
       return true;
     } catch (error) {
-      console.warn("Error eliminando grupo", error);
-      return false;
+      console.error("[RobleCategoryService] Error eliminando grupo:", error);
+      throw error;
     }
   }
 
@@ -407,7 +546,7 @@ export class RobleCategoryService {
   ): Promise<void> {
     const categories = await this.database.read("categories");
     const category = categories.find((cat) => cat["_id"] === categoryId);
-    if (!category || category["type"] !== "Aleatorio") return;
+    if (!category || category["type"] !== "aleatorio") return;
 
     const group = await this.getGroupById(groupId);
     if (!group) return;
@@ -434,13 +573,135 @@ export class RobleCategoryService {
     try {
       const categories = await this.getCategoriesByCourse(courseId);
       return categories.reduce<Record<string, number>>((acc, category) => {
-        const type = (category["type"] ?? "Sin tipo").toString();
+        const type = (category["type"] ?? "sin tipo").toString();
         acc[type] = (acc[type] ?? 0) + 1;
         return acc;
       }, {});
     } catch (error) {
       console.warn("Error resumiendo categorías", error);
       return {};
+    }
+  }
+
+  /**
+   * Crea grupos automáticamente al crear una categoría
+   * - Calcula cuántos grupos se necesitan según el número de estudiantes y la capacidad
+   * - Si el tipo es "aleatorio", asigna estudiantes aleatoriamente
+   * - Si el tipo es "eleccion", deja los grupos vacíos
+   */
+  private async createGroupsAutomatically(
+    category: CategoryRecord,
+    courseId: string
+  ): Promise<void> {
+    try {
+      console.log('[RobleCategoryService] Creando grupos automáticamente para categoría:', category["_id"]);
+      
+      // Obtener estudiantes del curso
+      const enrollments = await this.database.read("enrollments");
+      const students = enrollments.filter((enrollment) => {
+        const courseMatches = (enrollment["course_id"] ?? "").toString().trim() === courseId.trim();
+        const role = (enrollment["role"] ?? "").toString().toLowerCase();
+        return courseMatches && (role === "student" || role === "estudiante");
+      });
+
+      console.log(`[RobleCategoryService] Estudiantes en el curso: ${students.length}`);
+      
+      const capacity = (category["capacity"] as number) || 5;
+      const totalGroups = Math.ceil(students.length / capacity);
+      
+      console.log(`[RobleCategoryService] Capacidad por grupo: ${capacity}`);
+      console.log(`[RobleCategoryService] Grupos a crear: ${totalGroups}`);
+
+      if (totalGroups === 0) {
+        console.log('[RobleCategoryService] No hay estudiantes para asignar grupos');
+        return;
+      }
+
+      // Crear los grupos
+      const createdGroups: CategoryRecord[] = [];
+      
+      for (let i = 1; i <= totalGroups; i++) {
+        const groupData = {
+          name: `Grupo ${i}`,
+          category_id: category["_id"],
+        };
+        
+        await this.database.insert("groups", [groupData]);
+        
+        // Obtener el grupo recién creado
+        const groups = await this.database.read("groups");
+        const createdGroup = groups.find(
+          (g) => g["name"] === `Grupo ${i}` && g["category_id"] === category["_id"]
+        );
+        
+        if (createdGroup) {
+          createdGroups.push(createdGroup);
+          console.log(`[RobleCategoryService] Grupo creado: Grupo ${i}`);
+        }
+      }
+
+      // Asignar estudiantes según el tipo de categoría
+      const categoryType = (category["type"] ?? "").toString().toLowerCase();
+      
+      if (categoryType === "aleatorio") {
+        await this.assignStudentsRandomly(students, createdGroups, capacity);
+      } else if (categoryType === "eleccion") {
+        console.log('[RobleCategoryService] Grupos creados vacíos para elección de estudiantes');
+      }
+      
+    } catch (error) {
+      console.error('[RobleCategoryService] Error creando grupos automáticamente:', error);
+      // No lanzar error para no bloquear la creación de la categoría
+    }
+  }
+
+  /**
+   * Asigna estudiantes aleatoriamente a los grupos
+   */
+  private async assignStudentsRandomly(
+    students: CategoryRecord[],
+    groups: CategoryRecord[],
+    capacity: number
+  ): Promise<void> {
+    try {
+      console.log('[RobleCategoryService] Asignando estudiantes aleatoriamente...');
+      
+      // Mezclar estudiantes aleatoriamente
+      const shuffledStudents = [...students].sort(() => Math.random() - 0.5);
+      
+      let currentGroupIndex = 0;
+      let studentsInCurrentGroup = 0;
+      
+      for (const student of shuffledStudents) {
+        // Si el grupo actual está lleno, pasar al siguiente
+        if (studentsInCurrentGroup >= capacity) {
+          currentGroupIndex++;
+          studentsInCurrentGroup = 0;
+        }
+        
+        // Si no hay más grupos disponibles, salir del bucle
+        if (currentGroupIndex >= groups.length) {
+          console.log(`[RobleCategoryService] No hay más grupos disponibles para asignar estudiante`);
+          break;
+        }
+        
+        const currentGroup = groups[currentGroupIndex];
+        
+        // Crear membresía de grupo
+        const memberData = {
+          group_id: currentGroup["_id"],
+          student_id: student["user_id"] || student["_id"],
+        };
+        
+        await this.database.insert("group_members", [memberData]);
+        studentsInCurrentGroup++;
+        
+        console.log(`[RobleCategoryService] Estudiante asignado a ${currentGroup["name"]}`);
+      }
+      
+      console.log('[RobleCategoryService] Asignación aleatoria completada');
+    } catch (error) {
+      console.error('[RobleCategoryService] Error asignando estudiantes aleatoriamente:', error);
     }
   }
 }

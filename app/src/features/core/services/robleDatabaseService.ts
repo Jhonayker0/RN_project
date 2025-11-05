@@ -53,10 +53,20 @@ export class RobleDatabaseService {
 
   async delete(tableName: string, id: string): Promise<void> {
     try {
-      await this.client.delete(RobleConfig.deleteEndpoint, {
+      console.log('[RobleDatabaseService] DELETE request:', {
+        endpoint: RobleConfig.deleteEndpoint,
+        tableName,
+        idColumn: "_id",
+        idValue: id,
+      });
+      
+      const response = await this.client.delete(RobleConfig.deleteEndpoint, {
         data: { tableName, idColumn: "_id", idValue: id },
       });
+      
+      console.log('[RobleDatabaseService] DELETE response:', response.data);
     } catch (error) {
+      console.error('[RobleDatabaseService] DELETE error:', error);
       throw new Error(`Error al eliminar de ${tableName}: ${String(error)}`);
     }
   }

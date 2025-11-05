@@ -17,6 +17,10 @@ export class RobleUserService {
     }
   }
 
+  async getUserById(userId: string): Promise<UserRecord> {
+    return this.getUserInfo(userId);
+  }
+
   async getUsersByCourse(courseId: string): Promise<UserRecord[]> {
     try {
       const enrollments = await this.database.read("enrollments");

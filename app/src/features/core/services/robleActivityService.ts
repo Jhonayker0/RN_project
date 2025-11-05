@@ -1,6 +1,6 @@
 import { robleDatabaseService } from "./robleDatabaseService";
 
-export interface ActivityRecord extends Record<string, any> {}
+export type ActivityRecord = Record<string, any>;
 
 export class RobleActivityService {
   constructor(private readonly database = robleDatabaseService) {}
@@ -112,6 +112,70 @@ export class RobleActivityService {
     } catch (error) {
       console.warn("Error calculando estadísticas de actividades", error);
       return { total: 0, pending: 0, overdue: 0 };
+    }
+  }
+
+  async createActivity(data: {
+    title: string;
+    description?: string;
+    due_date?: Date;
+    course_id: string;
+    category_id?: string;
+  }): Promise<void> {
+    console.log("[robleActivityService] Creando actividad:", data);
+
+    const payload: Record<string, any> = {
+      title: data.title,
+      description: data.description ?? null,
+      due_date: data.due_date ? data.due_date.toISOString() : null,
+      course_id: data.course_id,
+      category_id: data.category_id ?? null,
+    };
+
+    try {
+      await this.database.insert("activities", [payload]);
+      console.log("[robleActivityService] Actividad creada exitosamente");
+    } catch (error) {
+      console.error("[robleActivityService] Error creando actividad:", error);
+      throw new Error("No se pudo crear la actividad");
+    }
+  }
+
+  async updateActivity(
+    activityId: string,
+    data: {
+      title?: string;
+      description?: string;
+      due_date?: Date;
+      category_id?: string;
+    }
+  ): Promise<void> {
+    console.log("[robleActivityService] Actualizando actividad:", activityId, data);
+
+    const payload: Record<string, any> = {};
+    if (data.title !== undefined) payload.title = data.title;
+    if (data.description !== undefined) payload.description = data.description ?? null;
+    if (data.due_date !== undefined) payload.due_date = data.due_date ? data.due_date.toISOString() : null;
+    if (data.category_id !== undefined) payload.category_id = data.category_id ?? null;
+
+    try {
+      await this.database.update("activities", activityId, payload);
+      console.log("[robleActivityService] Actividad actualizada exitosamente");
+    } catch (error) {
+      console.error("[robleActivityService] Error actualizando actividad:", error);
+      throw new Error("No se pudo actualizar la actividad");
+    }
+  }
+
+  async deleteActivity(activityId: string): Promise<void> {
+    console.log("[robleActivityService] Eliminando actividad:", activityId);
+
+    try {
+      await this.database.delete("activities", activityId);
+      console.log("[robleActivityService] Actividad eliminada");
+    } catch (error) {
+      console.error("[robleActivityService] Error eliminando actividad:", error);
+      throw new Error("No se pudo eliminar la actividad");
     }
   }
 }

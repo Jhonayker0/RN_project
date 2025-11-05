@@ -13,11 +13,13 @@ import {
   Platform,
 } from "react-native";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../../auth";
 import { useCourseDetailController } from "../hooks/useCourseDetailController";
 import { ActionButton } from "../components/ActionButton";
+import { ActivityCard } from "../components/ActivityCard";
 
 export function CourseDetailScreen() {
   const { courseId } = useLocalSearchParams<{ courseId?: string }>();
@@ -44,10 +46,21 @@ export function CourseDetailScreen() {
   };
 
   useEffect(() => {
-    if (controller.course?.title) {
-      navigation.setOptions?.({ title: controller.course.title });
-    }
-  }, [controller.course?.title, navigation]);
+    navigation.setOptions?.({
+      title: controller.course?.title ?? 'Curso',
+      headerRight: () => (
+        <Pressable
+          onPress={() => controller.refresh()}
+          style={({ pressed }) => [
+            styles.headerButton,
+            pressed && styles.headerButtonPressed,
+          ]}
+        >
+          <Ionicons name="refresh" size={24} color="#2563eb" />
+        </Pressable>
+      ),
+    });
+  }, [controller.course?.title, navigation, controller]);
 
   if (!effectiveCourseId) {
     return (
@@ -133,17 +146,26 @@ export function CourseDetailScreen() {
   };
 
   const handleCreateActivity = () => {
-    Alert.alert(
-      "Próximamente",
-      "Estamos preparando la creación de actividades desde esta pantalla."
-    );
+    router.push({
+      pathname: "/activities/create",
+      params: { courseId: effectiveCourseId },
+    } as any);
   };
 
   const handleCreateCategory = () => {
-    Alert.alert(
-      "Próximamente",
-      "Muy pronto podrás gestionar categorías directamente aquí."
-    );
+    // Navegar a crear categoría pasando el courseId
+    router.push({
+      pathname: "/categories/create",
+      params: { courseId: effectiveCourseId },
+    } as any);
+  };
+
+  const handleCategoryPress = (categoryId: string) => {
+    // Navegar a ver detalle de categoría
+    router.push({
+      pathname: "/categories/detail/[categoryId]",
+      params: { categoryId },
+    } as any);
   };
 
   const handleDeleteCourse = () => {
@@ -206,7 +228,9 @@ export function CourseDetailScreen() {
             activities={controller.activities}
             stats={controller.activityStats}
             isProfessor={controller.isProfessor}
+            currentUserId={currentUser?.uuid ?? (currentUser ? String(currentUser.id) : '')}
             onCreateActivity={handleCreateActivity}
+            onRefresh={controller.refresh}
           />
         )}
 
@@ -216,6 +240,7 @@ export function CourseDetailScreen() {
             isProfessor={controller.isProfessor}
             onInvite={handleCopyCode}
             onShare={handleShareCode}
+            onRefresh={controller.refresh}
           />
         )}
 
@@ -224,6 +249,8 @@ export function CourseDetailScreen() {
             categories={controller.categories}
             isProfessor={controller.isProfessor}
             onCreateCategory={handleCreateCategory}
+            onCategoryPress={handleCategoryPress}
+            onRefresh={controller.refresh}
           />
         )}
 
@@ -257,6 +284,7 @@ interface BottomTabBarProps {
 }
 
 function BottomTabBar({ activeTab, onChange }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
   const tabs: { key: CourseTab; label: string }[] = [
     { key: "activities", label: "Actividades" },
     { key: "students", label: "Estudiantes" },
@@ -265,7 +293,7 @@ function BottomTabBar({ activeTab, onChange }: BottomTabBarProps) {
   ];
 
   return (
-    <View style={styles.bottomBar}>
+    <View style={[styles.bottomBar, { paddingBottom: insets.bottom }]}>
       {tabs.map((tab) => {
         const isActive = tab.key === activeTab;
         return (
@@ -289,19 +317,36 @@ interface ActivitiesSectionProps {
   activities: Record<string, any>[];
   stats: { total: number; pending: number; overdue: number };
   isProfessor: boolean;
+  currentUserId: string;
   onCreateActivity: () => void;
+  onRefresh?: () => void;
 }
 
 function ActivitiesSection({
   activities,
   stats,
   isProfessor,
+  currentUserId,
   onCreateActivity,
+  onRefresh,
 }: ActivitiesSectionProps) {
   if (!activities.length) {
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Actividades</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Actividades</Text>
+          {onRefresh && (
+            <Pressable
+              onPress={onRefresh}
+              style={({ pressed }) => [
+                styles.refreshIconButton,
+                pressed && styles.refreshIconButtonPressed,
+              ]}
+            >
+              <Ionicons name="refresh" size={20} color="#2563eb" />
+            </Pressable>
+          )}
+        </View>
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
             No hay actividades registradas en este curso.
@@ -316,10 +361,25 @@ function ActivitiesSection({
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Actividades ({stats.total})</Text>
-      <Text style={styles.sectionSubtitle}>
-        Pendientes: {stats.pending} · Vencidas: {stats.overdue}
-      </Text>
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={styles.sectionTitle}>Actividades ({stats.total})</Text>
+          <Text style={styles.sectionSubtitle}>
+            Pendientes: {stats.pending} · Vencidas: {stats.overdue}
+          </Text>
+        </View>
+        {onRefresh && (
+          <Pressable
+            onPress={onRefresh}
+            style={({ pressed }) => [
+              styles.refreshIconButton,
+              pressed && styles.refreshIconButtonPressed,
+            ]}
+          >
+            <Ionicons name="refresh" size={20} color="#2563eb" />
+          </Pressable>
+        )}
+      </View>
       {isProfessor ? (
         <ActionButton
           label="Crear nueva actividad"
@@ -330,18 +390,13 @@ function ActivitiesSection({
       <View style={styles.cardList}>
         {activities.map((activity) => {
           const id = (activity["_id"] ?? activity["id"]) as string;
-          const title = (activity["title"] ??
-            activity["name"] ??
-            "Actividad") as string;
-          const due =
-            activity["formatted_due_date"] ?? formatDate(activity["due_date"]);
-          const category = activity["category_name"] ?? "Sin categoría";
           return (
-            <View key={id} style={styles.card}>
-              <Text style={styles.cardTitle}>{title}</Text>
-              <Text style={styles.cardMeta}>Categoría: {category}</Text>
-              <Text style={styles.cardMeta}>Entrega: {due ?? "-"}</Text>
-            </View>
+            <ActivityCard
+              key={id}
+              activity={activity}
+              isProfessor={isProfessor}
+              currentUserId={currentUserId}
+            />
           );
         })}
       </View>
@@ -354,6 +409,7 @@ interface StudentsSectionProps {
   isProfessor: boolean;
   onInvite: () => void;
   onShare: () => void;
+  onRefresh?: () => void;
 }
 
 function StudentsSection({
@@ -361,11 +417,25 @@ function StudentsSection({
   isProfessor,
   onInvite,
   onShare,
+  onRefresh,
 }: StudentsSectionProps) {
   if (!students.length) {
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Participantes</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Participantes</Text>
+          {onRefresh && (
+            <Pressable
+              onPress={onRefresh}
+              style={({ pressed }) => [
+                styles.refreshIconButton,
+                pressed && styles.refreshIconButtonPressed,
+              ]}
+            >
+              <Ionicons name="refresh" size={20} color="#2563eb" />
+            </Pressable>
+          )}
+        </View>
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
             Aún no hay estudiantes inscritos en este curso.
@@ -387,7 +457,20 @@ function StudentsSection({
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Participantes ({students.length})</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Participantes ({students.length})</Text>
+        {onRefresh && (
+          <Pressable
+            onPress={onRefresh}
+            style={({ pressed }) => [
+              styles.refreshIconButton,
+              pressed && styles.refreshIconButtonPressed,
+            ]}
+          >
+            <Ionicons name="refresh" size={20} color="#2563eb" />
+          </Pressable>
+        )}
+      </View>
       {isProfessor ? (
         <View style={styles.sectionActions}>
           <ActionButton label="Copiar código" onPress={onInvite} />
@@ -447,17 +530,34 @@ interface CategoriesSectionProps {
   categories: Record<string, any>[];
   isProfessor: boolean;
   onCreateCategory: () => void;
+  onCategoryPress?: (categoryId: string) => void;
+  onRefresh?: () => void;
 }
 
 function CategoriesSection({
   categories,
   isProfessor,
   onCreateCategory,
+  onCategoryPress,
+  onRefresh,
 }: CategoriesSectionProps) {
   if (!categories.length) {
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Categorías</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Categorías</Text>
+          {onRefresh && (
+            <Pressable
+              onPress={onRefresh}
+              style={({ pressed }) => [
+                styles.refreshIconButton,
+                pressed && styles.refreshIconButtonPressed,
+              ]}
+            >
+              <Ionicons name="refresh" size={20} color="#2563eb" />
+            </Pressable>
+          )}
+        </View>
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
             Todavía no se han configurado categorías.
@@ -472,7 +572,20 @@ function CategoriesSection({
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Categorías ({categories.length})</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Categorías ({categories.length})</Text>
+        {onRefresh && (
+          <Pressable
+            onPress={onRefresh}
+            style={({ pressed }) => [
+              styles.refreshIconButton,
+              pressed && styles.refreshIconButtonPressed,
+            ]}
+          >
+            <Ionicons name="refresh" size={20} color="#2563eb" />
+          </Pressable>
+        )}
+      </View>
       {isProfessor ? (
         <ActionButton
           label="Nueva categoría"
@@ -484,15 +597,25 @@ function CategoriesSection({
         {categories.map((category) => {
           const id = (category["_id"] ?? category["id"]) as string;
           const name = (category["name"] ?? "Categoría") as string;
+          const type = (category["type"] ?? "Sin tipo") as string;
           const activityCount = category["activity_count"] ?? 0;
           const groupCount = category["group_count"] ?? 0;
           return (
-            <View key={id} style={styles.card}>
-              <Text style={styles.cardTitle}>{name}</Text>
+            <Pressable
+              key={id}
+              style={styles.card}
+              onPress={() => onCategoryPress?.(id)}
+            >
+              <View style={styles.categoryHeader}>
+                <Text style={styles.cardTitle}>{name}</Text>
+                <View style={styles.categoryTypeChip}>
+                  <Text style={styles.categoryTypeText}>{type}</Text>
+                </View>
+              </View>
               <Text style={styles.cardMeta}>
                 Actividades: {activityCount} · Grupos: {groupCount}
               </Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -651,6 +774,13 @@ const styles = StyleSheet.create({
     gap: 24,
     paddingBottom: 140,
   },
+  headerButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerButtonPressed: {
+    opacity: 0.5,
+  },
   navRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -694,6 +824,12 @@ const styles = StyleSheet.create({
   section: {
     gap: 12,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -701,6 +837,13 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     color: "#4b5563",
+  },
+  refreshIconButton: {
+    padding: 4,
+    borderRadius: 8,
+  },
+  refreshIconButtonPressed: {
+    backgroundColor: "#e5e7eb",
   },
   sectionActions: {
     flexDirection: "row",
@@ -894,5 +1037,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
+  },
+  categoryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  categoryTypeChip: {
+    backgroundColor: "#dbeafe",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  categoryTypeText: {
+    color: "#1d4ed8",
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
 });

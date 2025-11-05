@@ -151,13 +151,19 @@ export function useCourseDetailController(
       throw new Error("No se pudo determinar el curso a eliminar.");
     }
 
+    console.log('[useCourseDetailController] Eliminando curso:', identifier);
+    
     setDeleting(true);
     try {
       await repository.delete(identifier);
+      console.log('[useCourseDetailController] Curso eliminado, limpiando estado...');
       setCourse(null);
       setActivities([]);
       setCategories([]);
       setStudents([]);
+    } catch (error) {
+      console.error('[useCourseDetailController] Error eliminando curso:', error);
+      throw error;
     } finally {
       setDeleting(false);
     }
