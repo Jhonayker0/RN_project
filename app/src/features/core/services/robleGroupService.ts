@@ -1,4 +1,5 @@
 import { robleDatabaseService } from "./robleDatabaseService";
+import { robleUserService } from "./robleUserService";
 
 export type GroupRecord = Record<string, any>;
 export type GroupMemberRecord = Record<string, any>;
@@ -66,8 +67,8 @@ export class RobleGroupService {
 
   async getMemberInfo(studentId: string): Promise<Record<string, any> | null> {
     try {
-      const users = await this.database.read("users");
-      return users.find((user) => user["_id"] === studentId) ?? null;
+      const userInfo = await robleUserService.getUserById(studentId);
+      return userInfo;
     } catch (error) {
       console.error("[RobleGroupService] Error obteniendo info de estudiante:", error);
       return null;
