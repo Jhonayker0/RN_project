@@ -95,7 +95,7 @@ export function ManageGroupsModal({
             <View style={styles.infoIcon}>
               <Ionicons
                 name={isRandom ? "shuffle" : "hand-right"}
-                size={20}
+                size={16}
                 color={isRandom ? "#f59e0b" : "#2563eb"}
               />
             </View>
@@ -118,7 +118,7 @@ export function ManageGroupsModal({
               ]}
               onPress={handleCreateGroup}
             >
-              <Ionicons name="add" size={20} color="#ffffff" />
+              <Ionicons name="add" size={18} color="#ffffff" />
               <Text style={styles.createButtonText}>Crear Grupo</Text>
             </Pressable>
           </View>
@@ -180,16 +180,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: "100%",
     maxWidth: 600,
-    maxHeight: "85%",
+    maxHeight: "90%",
+    minHeight: 400,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    padding: 16,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#111827",
   },
@@ -203,14 +204,14 @@ const styles = StyleSheet.create({
   infoContainer: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 12,
     backgroundColor: "#f9fafb",
-    gap: 12,
+    gap: 10,
   },
   infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#ffffff",
     justifyContent: "center",
     alignItems: "center",
@@ -219,39 +220,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#111827",
   },
   infoSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6b7280",
     marginTop: 2,
   },
   actionsRow: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   createButton: {
     backgroundColor: "#10b981",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   createButtonPressed: {
     backgroundColor: "#059669",
   },
   createButtonText: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
   },
   scrollView: {
     flex: 1,
-    padding: 16,
+    padding: 12,
   },
   loadingContainer: {
     flex: 1,

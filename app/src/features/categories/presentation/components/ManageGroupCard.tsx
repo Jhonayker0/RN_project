@@ -118,7 +118,7 @@ export function ManageGroupCard({
         <View style={styles.headerLeft}>
           <Ionicons
             name={expanded ? "chevron-down" : "chevron-forward"}
-            size={20}
+            size={18}
             color="#6b7280"
           />
           <Text style={styles.groupName}>{group.name}</Text>
@@ -135,14 +135,14 @@ export function ManageGroupCard({
             style={styles.actionButton}
             onPress={() => setShowEditModal(true)}
           >
-            <Ionicons name="pencil" size={20} color="#2563eb" />
+            <Ionicons name="pencil" size={18} color="#2563eb" />
           </Pressable>
 
           <Pressable
             style={styles.actionButton}
             onPress={handleDeleteGroup}
           >
-            <Ionicons name="trash" size={20} color="#ef4444" />
+            <Ionicons name="trash" size={18} color="#ef4444" />
           </Pressable>
         </View>
       </Pressable>
@@ -194,7 +194,7 @@ export function ManageGroupCard({
                     style={styles.removeButton}
                     onPress={() => handleRemoveMember(member._id, member.name || "este estudiante")}
                   >
-                    <Ionicons name="close-circle" size={24} color="#ef4444" />
+                    <Ionicons name="close-circle" size={22} color="#ef4444" />
                   </Pressable>
                 )}
               </View>
@@ -241,37 +241,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: 12,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   groupName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#111827",
   },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   capacityBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 20,
     backgroundColor: "#f3f4f6",
   },
   capacityText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   actionButton: {
-    padding: 8,
-    marginLeft: 4,
+    padding: 6,
+    marginLeft: 2,
   },
   description: {
     fontSize: 14,
@@ -282,8 +282,8 @@ const styles = StyleSheet.create({
   membersContainer: {
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
-    padding: 16,
-    gap: 12,
+    padding: 12,
+    gap: 10,
   },
   membersHeader: {
     flexDirection: "row",
@@ -331,16 +331,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#2563eb",
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
   },
   memberDetails: {
