@@ -69,7 +69,7 @@ export function EvaluatePeersModal({
       for (const group of groups) {
         const members = await robleGroupService.getGroupMembers(group._id);
         const isMember = members.some(
-          (m: any) => m.student_id === currentUserId
+          (m: any) => m.student_id === currentUserId || m._id === currentUserId
         );
         if (isMember) {
           currentUserGroup = { ...group, members };
@@ -91,7 +91,7 @@ export function EvaluatePeersModal({
 
       // Obtener compañeros del mismo grupo (excluir al usuario actual)
       const peers = currentUserGroup.members.filter(
-        (m: any) => m.student_id !== currentUserId
+        (m: any) => m.student_id !== currentUserId && m._id !== currentUserId
       );
 
       console.log(`📝 ${peers.length} compañeros para evaluar`);
