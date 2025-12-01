@@ -37,6 +37,7 @@ export default function CategoryDetailScreen() {
 });
   // TODO: Obtener rol del usuario desde contexto de auth
   const isProfessor = controller2.isProfessor
+  console.log("currentUser:", currentUser);
 
 
   useEffect(() => {
@@ -236,7 +237,7 @@ export default function CategoryDetailScreen() {
               currentUser
                 ? {
                     ...currentUser,
-                    id: String(currentUser.id),
+                    id: String(currentUser.uuid),
                     uuid: currentUser.uuid ?? undefined,
                     role: isProfessor ? "professor" : "student",
                   }
