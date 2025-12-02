@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState,useMemo } from "react";
 import {
   View,
   Text,
@@ -15,19 +15,30 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useCategoryDetailController } from "../hooks/useCategoryDetailController";
 import { GroupsModal } from "../components/GroupsModal";
 import { ManageGroupsModal } from "../components/ManageGroupsModal";
+import { useAuth } from "../../../auth";
+import { useCourseDetailController } from "../../../courses/presentation/hooks/useCourseDetailController";
 
 // Pantalla de detalle de categoría
 export default function CategoryDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ categoryId: string }>();
   const categoryId = params.categoryId ?? "";
-
+  const { courseId } = useLocalSearchParams<{ courseId?: string }>();
   const controller = useCategoryDetailController(categoryId);
   const [showGroupsModal, setShowGroupsModal] = useState(false);
   const [showManageGroupsModal, setShowManageGroupsModal] = useState(false);
-
+  const { currentUser } = useAuth();
+  const effectiveCourseId = useMemo(() => {
+    if (!courseId) return "";
+    return Array.isArray(courseId) ? courseId[0] : courseId;
+  }, [courseId]);
+  const controller2 = useCourseDetailController(effectiveCourseId, {
+  currentUserId: currentUser?.uuid ?? (currentUser ? String(currentUser.id) : null),
+});
   // TODO: Obtener rol del usuario desde contexto de auth
-  const isProfessor = true; // Por ahora hardcoded, después obtener del contexto
+  const isProfessor = controller2.isProfessor
+  console.log("currentUser:", currentUser);
+
 
   useEffect(() => {
     if (!categoryId) {
@@ -219,10 +230,20 @@ export default function CategoryDetailScreen() {
 
       {/* Groups Modal */}
       <GroupsModal
-        visible={showGroupsModal}
-        onClose={() => setShowGroupsModal(false)}
-        category={category}
-      />
+            visible={showGroupsModal}
+            onClose={() => setShowGroupsModal(false)}
+            category={category}
+            currentUser={
+              currentUser
+                ? {
+                    ...currentUser,
+                    id: String(currentUser.uuid),
+                    uuid: currentUser.uuid ?? undefined,
+                    role: isProfessor ? "professor" : "student",
+                  }
+                : null
+            }
+          />
 
       {/* Manage Groups Modal */}
       <ManageGroupsModal

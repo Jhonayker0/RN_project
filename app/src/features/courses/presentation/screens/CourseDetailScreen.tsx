@@ -164,7 +164,7 @@ export function CourseDetailScreen() {
     // Navegar a ver detalle de categoría
     router.push({
       pathname: "/categories/detail/[categoryId]",
-      params: { categoryId },
+      params: { categoryId, courseId: effectiveCourseId },
     } as any);
   };
 

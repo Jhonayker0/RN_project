@@ -690,7 +690,7 @@ export class RobleCategoryService {
         // Crear membresía de grupo
         const memberData = {
           group_id: currentGroup["_id"],
-          student_id: student["user_id"] || student["_id"],
+          student_id: student["uuid"] || student["student_id"],
         };
         
         await this.database.insert("group_members", [memberData]);

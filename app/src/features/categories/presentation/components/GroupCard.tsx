@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { robleUserService } from "../../../core/services/robleUserService";
+import { robleGroupService } from "../../../core/services/robleGroupService";
 
 // Card expandible para mostrar un grupo y sus miembros
 interface GroupCardProps {
@@ -19,23 +21,54 @@ interface GroupCardProps {
     member_count: number;
   };
   category: {
+    _id: string;
     capacity?: number;
     type?: string;
   };
+  currentUser: {
+    _id: string;
+    role?: string;
+  } | null;
+  allGroupsInCategory: any[];
   onUpdate: () => void;
 }
 
-export function GroupCard({ group, category, onUpdate }: GroupCardProps) {
+export function GroupCard({ 
+  group, 
+  category, 
+  currentUser, 
+  allGroupsInCategory,
+  onUpdate 
+}: GroupCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [membersInfo, setMembersInfo] = useState<Record<string, any>[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
-
+  const [joiningGroup, setJoiningGroup] = useState(false);
   const capacity = category.capacity ?? 5;
   const memberCount = group.member_count;
   const capacityPercentage = capacity > 0
     ? Math.round((memberCount / capacity) * 100)
     : 0;
 
+  const isStudent = currentUser?.role?.toLowerCase() === "student" || 
+                   currentUser?.role?.toLowerCase() === "estudiante";
+
+
+  const isAlreadyInThisGroup = group.members?.some(
+    (member: any) => member.student_id === currentUser?._id || member._id === currentUser?._id
+  );
+
+  const isAlreadyInCategoryGroup = allGroupsInCategory?.some((categoryGroup) => {
+    if (categoryGroup._id === group._id) return false;
+    
+    return categoryGroup.members?.some(
+      (member: any) => member.student_id === currentUser?._id || member._id === currentUser?._id
+    );
+  });
+
+  const hasCapacity = memberCount < capacity;
+  const shouldShowJoinButton = isStudent && hasCapacity && !isAlreadyInThisGroup && !isAlreadyInCategoryGroup && currentUser;
+  console.log("que es esto?", shouldShowJoinButton);
   const getPercentageColor = () => {
     if (capacityPercentage >= 100) return "#dc2626";
     if (capacityPercentage >= 80) return "#f59e0b";
@@ -47,7 +80,6 @@ export function GroupCard({ group, category, onUpdate }: GroupCardProps) {
     if (!expanded && group.members.length > 0 && membersInfo.length === 0) {
       setLoadingMembers(true);
       try {
-        // Cargar información de los miembros
         const info = await Promise.all(
           group.members.map(async (member) => {
             const userInfo = await robleUserService.getUserById(member.student_id);
@@ -65,6 +97,40 @@ export function GroupCard({ group, category, onUpdate }: GroupCardProps) {
       }
     }
     setExpanded(!expanded);
+  };
+
+  const handleJoinGroup = async () => {
+    if (!currentUser) {
+      Alert.alert("Error", "Usuario no identificado");
+      return;
+    }
+
+    if (isAlreadyInThisGroup) {
+      Alert.alert("Información", "Ya estás en este grupo");
+      return;
+    }
+
+    if (isAlreadyInCategoryGroup) {
+      Alert.alert("No permitido", "Ya estás en otro grupo de esta categoría. No puedes estar en más de un grupo por categoría.");
+      return;
+    }
+
+    if (!hasCapacity) {
+      Alert.alert("No disponible", "Este grupo está lleno");
+      return;
+    }
+
+    setJoiningGroup(true);
+    try {
+      await robleGroupService.joinGroup(group._id, currentUser._id);
+      Alert.alert("Éxito", "¡Te has unido al grupo exitosamente!");
+      onUpdate();
+    } catch (error) {
+      console.error("Error al unirse al grupo:", error);
+      Alert.alert("Error", "No se pudo unir al grupo. Intenta nuevamente.");
+    } finally {
+      setJoiningGroup(false);
+    }
   };
 
   return (
@@ -97,11 +163,33 @@ export function GroupCard({ group, category, onUpdate }: GroupCardProps) {
           </View>
         </View>
 
-        <Ionicons
-          name={expanded ? "chevron-up" : "chevron-down"}
-          size={24}
-          color="#6b7280"
-        />
+        <View style={styles.headerRight}>
+          {isStudent && shouldShowJoinButton && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.joinButton,
+                pressed && styles.joinButtonPressed,
+                !hasCapacity && styles.joinButtonDisabled,
+              ]}
+              onPress={handleJoinGroup}
+              disabled={joiningGroup || !hasCapacity}
+            >
+              {joiningGroup ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <Ionicons name="add-circle" size={16} color="#ffffff" />
+                  <Text style={styles.joinButtonText}>Ingresar</Text>
+                </>
+              )}
+            </Pressable>
+          )}
+          <Ionicons
+            name={expanded ? "chevron-up" : "chevron-down"}
+            size={24}
+            color="#6b7280"
+          />
+        </View>
       </Pressable>
 
       {/* Expanded Content */}
@@ -187,6 +275,31 @@ const styles = StyleSheet.create({
     color: "#6b7280",
   },
   percentage: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  joinButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#10b981",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  joinButtonPressed: {
+    backgroundColor: "#059669",
+  },
+  joinButtonDisabled: {
+    backgroundColor: "#d1d5db",
+  },
+  joinButtonText: {
+    color: "#ffffff",
     fontSize: 12,
     fontWeight: "600",
   },

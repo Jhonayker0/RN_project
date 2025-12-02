@@ -22,9 +22,15 @@ interface GroupsModalProps {
     capacity?: number;
     type?: string;
   } | null;
+  currentUser: { _id?: string; id?: string; uuid?: string; role?: string } | null;
 }
 
-export function GroupsModal({ visible, onClose, category }: GroupsModalProps) {
+export function GroupsModal({ 
+  visible, 
+  onClose, 
+  category,
+  currentUser,
+}: GroupsModalProps) {
   const [groups, setGroups] = useState<Record<string, any>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -49,6 +55,11 @@ export function GroupsModal({ visible, onClose, category }: GroupsModalProps) {
   };
 
   if (!category) return null;
+
+  const normalizedUser = currentUser ? {
+    _id: currentUser._id || currentUser.id || currentUser.uuid || "",
+    role: currentUser.role,
+  } : null;
 
   return (
     <Modal
@@ -87,6 +98,8 @@ export function GroupsModal({ visible, onClose, category }: GroupsModalProps) {
                   key={group._id}
                   group={group as any}
                   category={category}
+                  currentUser={normalizedUser}
+                  allGroupsInCategory={groups}
                   onUpdate={loadGroups}
                 />
               ))}
